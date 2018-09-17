@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='ISO-8859-1' ?>
+
+<picture version='3' xmlns:rgml='http://r-project.org/RGML' source='dash.ps' date='2018-09-17 21:55:02' creator='R (3.4.2)' >
+
+<path type='stroke' id='1'>
+	<context>
+		<rgb r='0.0' g='0.0' b='0.0'/>
+		<style lwd='100.0' lty='30.0 ' lineend='0' linemitre='10.0' linejoin='0'/>
+	</context>
+
+	<move y='500.0' x='500.0'/>
+	<line y='1000.0' x='1000.0'/>
+</path>
+
+<summary count='1' ymax='1000.0' ymin='500.0' xmax='1000.0' xmin='500.0'/>
+
+</picture>

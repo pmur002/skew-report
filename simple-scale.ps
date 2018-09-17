@@ -1,0 +1,16 @@
+%!
+/str 50 string def
+/showscale {
+    matrix currentmatrix aload pop pop pop
+    dup mul exch dup mul add sqrt 3 1 roll
+    dup mul exch dup mul add sqrt
+    (xscale=) print dup str cvs print
+    (, yscale=) print exch dup str cvs print 
+} def
+newpath
+50 50 moveto
+100 100 lineto
+10 setlinewidth
+showscale
+stroke
+showpage

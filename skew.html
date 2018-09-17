@@ -1,0 +1,1312 @@
+<html>
+  <head>
+<style type="text/css">
+.knitr .inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.rimage .left {
+  text-align: left;
+}
+.rimage .right {
+  text-align: right;
+}
+.rimage .center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <style type="text/css">
+    @media print {
+      body { }
+      p.img { text-align: center; page-break-inside: avoid }
+      img.CC { display: inline }
+    }
+    @media screen {
+      body { max-width: 800px; margin: auto }
+      p.img { text-align: center }
+      img.CC { display: inline }
+    }
+    p.date {
+      font-size: smaller;
+      margin: 0;
+    }
+    p.versionHistory {
+      color: gray
+    }
+    p.versionHistory a {
+      color: gray
+    }
+    p.ref {
+      text-indent: -2em;
+      padding-left: 2em;
+    }
+  </style>
+    <!-- PDFjs code (more at the end of the document) -->
+    <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+  </head>
+  <body>
+    <h1>Importing General-Purpose Graphics in R</h1>
+    <p>
+      <span style="font-style: italic">by Paul Murrell</span>
+      <a href="http://orcid.org">
+        <img alt="" src="https://www.stat.auckland.ac.nz/~paul/ORCID/ORCiD.png" style="width: 16px; height: 16px; vertical-align: middle">
+      </a>
+      <span style="font-family: mono; font-size: small">
+        <a href="http://orcid.org/0000-0002-3224-8858">http://orcid.org/0000-0002-3224-8858</a>
+      </span>
+    </p>
+    <p class="date">
+    Version 1:
+Monday 17 September 2018
+  </p>
+
+
+    <hr>
+    <p><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img class="CC" alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Paul
+    Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+    <hr>
+    <p>
+    This report discusses some problems that can arise when attempting to
+    import PostScript images into R, when the PostScript image
+    contains coordinate 
+    transformations that skew the image.  There is a description of
+    some new features in the 'grImport' package for R that allow these
+    sorts of images to be imported into R successfully.
+  </p>
+    <div>
+      <h2>Table of Contents:</h2>
+      <ul style="list-style: none">
+        <li>
+          <a href="#intro">1. Introduction</a>
+        </li>
+        <li>
+          <a href="#grimport">2. Changes to 'grImport'</a>
+        </li>
+        <li>
+          <a href="#sources">3. Where do skewed lines come from?</a>
+        </li>
+        <li>
+          <a href="#bonus">4. Importing dashed lines</a>
+        </li>
+        <li>
+          <a href="#example">5. Integrating the imported image with an R plot</a>
+        </li>
+        <li>
+          <a href="#discussion">6. Discussion</a>
+        </li>
+        <li>
+          <a href="#summary">7. Summary</a>
+        </li>
+        <li>
+          <a href="#requirements">8. Technical requirements</a>
+        </li>
+        <li>
+          <a href="#Resources">9. Resources</a>
+        </li>
+        <li>
+          <a href="#references">10. References</a>
+        </li>
+      </ul>
+    </div>
+    <h2>
+      <a name="intro">1. Introduction</a>
+    </h2>
+    <p>
+    One difference between general-purpose graphics languages like
+    PostScript (<a href="#AdobeSystemsInc.:1999:PLR:297697">Adobe Systems Inc., 1999</a>) 
+    or SVG (<a href="#Ferraiolo01scalablevector">Ferraiolo and ed., 2001</a>)
+    and a statistical graphics system like the one
+    in R (<a href="#R">R Core Team, 2018</a>) is how they work with coordinate transformations.
+  </p>
+    <p>
+    In a general-purpose graphics language, there is usually a 
+    "current transformation matrix" that transforms all
+    graphical output.  For example, the following PostScript code,
+    stored in a file called <code>simple.ps</code>,
+    describes a simple thick line and a text label.
+  </p>
+<div class="chunk" id="unnamed-chunk-3"><div class="rcode"><div class="output"><pre class="knitr r">  %!
+  newpath
+  50 50 moveto
+  100 100 lineto
+  10 setlinewidth
+  stroke
+  /Times-Roman findfont 12 scalefont setfont
+  75 50 moveto
+  (Hello) show
+  showpage
+</pre></div>
+</div></div>
+    <img src="simple.png">
+    <p>
+    If we add a coordinate transformation at the start of that PostScript
+    code, which inverts the y-axis and skews the image by scaling the x-axis
+    by a factor of two, the transformation affects all of the output.
+    In particular, both the text and the line have been horizontally 
+    stretched and the text is now upside down.
+    The code below is stored in a file called <code>transform.ps</code>.
+  </p>
+<div class="chunk" id="unnamed-chunk-4"><div class="rcode"><div class="output"><pre class="knitr r">  %!
+  0 150 translate
+  2 -1 scale 
+  newpath
+  50 50 moveto
+  100 100 lineto
+  10 setlinewidth
+  stroke
+  /Times-Roman findfont 12 scalefont setfont
+  75 50 moveto
+  (Hello) show
+  showpage
+</pre></div>
+</div></div>
+    <img src="transform.png">
+    <p>
+    This sort of coordinate transformation is often required in statistical 
+    graphics to represent the scales on a plot.  In the plot
+    below, the y-axis is inverted and the scaling factor on
+    the x-axis is different than the scaling factor on the y-axis
+    (both because of unequal scales and because of unequal 
+    physical dimensions).  However, in a plot, we do not 
+    want text to be written upside down just because the y-axis
+    scale is inverted, nor do we want
+    text to be distorted if the scales on the plot axes do not
+    match.  Similarly, when we draw a line through data, we do
+    not want the width of the line to be distorted by
+    differences between the scales on the plot axes.
+  </p>
+<div class="chunk" id="unnamed-chunk-5"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">plot</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl num">20</span><span class="hl std">),</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl num">10</span><span class="hl std">),</span> <span class="hl kwc">type</span><span class="hl std">=</span><span class="hl str">&quot;l&quot;</span><span class="hl std">,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">20</span><span class="hl std">,</span> <span class="hl kwc">ylim</span><span class="hl std">=</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">10</span><span class="hl std">,</span> <span class="hl num">1</span><span class="hl std">),</span> <span class="hl kwc">lend</span><span class="hl std">=</span><span class="hl str">&quot;butt&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">text</span><span class="hl std">(</span><span class="hl num">15</span><span class="hl std">,</span> <span class="hl num">2</span><span class="hl std">,</span> <span class="hl str">&quot;Hello&quot;</span><span class="hl std">,</span> <span class="hl kwc">cex</span><span class="hl std">=</span><span class="hl num">4</span><span class="hl std">,</span> <span class="hl kwc">family</span><span class="hl std">=</span><span class="hl str">&quot;Times&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-5-1.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" class="plot" /></div></div>
+    <p>
+    This means that, in R graphics, although features like 
+    the location of data symbols and the location of text labels
+    on a plot must obey the coordinate system of the scales on the axes,
+    features like the size of text and the thickness of lines completely
+    ignore the plot coordinate system.
+  </p>
+    <p>
+    This difference in the treatment of coordinate systems creates
+    a problem when it comes to importing general-purpose 
+    graphical images, such as
+    PostScript images, into R.
+    The following code uses version 0.9-1 of the 'grImport' package
+    (made available as the package 'grImportOLD' for this report)
+    to import the <code>transform.ps</code> PostScript image into
+    R.  In the resulting image,  the line is not
+    distorted in R like it was in the original PostScript image,
+    This reflects the fact that R graphics ignores 
+    coordinate transformations when calculating the width (or shape)
+    of the line.  (The fact that the text is actually drawn
+    correctly is something that we will come back to later.)
+  </p>
+<div class="chunk" id="badtrans"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(grImportOLD)</span>
+<span class="hl std">grImportOLD</span><span class="hl opt">::</span><span class="hl kwd">PostScriptTrace</span><span class="hl std">(</span><span class="hl str">&quot;transform.ps&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;transform-0.9-1.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">badTransform</span> <span class="hl kwb">&lt;-</span> <span class="hl std">grImportOLD</span><span class="hl opt">::</span><span class="hl kwd">readPicture</span><span class="hl std">(</span><span class="hl str">&quot;transform-0.9-1.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">grImportOLD</span><span class="hl opt">::</span><span class="hl kwd">grid.picture</span><span class="hl std">(badTransform)</span>
+</pre></div>
+</div></div>
+
+    <canvas id="badtransform" class="pdf"></canvas>
+    <p>
+    This report describes an update of the 'grImport' package
+    that solves this problem, so that PostScript images that contain
+    coordinate transformations like the one in 
+    <code>transform.ps</code> 
+    can be rendered faithfully in R.
+  </p>
+    <h2>
+      <a name="grimport">2. Changes to 'grImport'</a>
+    </h2>
+    <h3>The strokepath operator</h3>
+    <p>
+    The changes to 'grImport' in version 0.9-2 are based on 
+    the <code>strokepath</code> operator in PostScript.
+    This operator takes a path (a collection of lines and curves) and, 
+    instead of stroking it 
+    (drawing a line along the path), calculates a new path that
+    describes the outline of the area that would have been drawn 
+    by stroking the original path.
+  </p>
+    <p>
+    The following PostScript code illustrates this idea.
+    This code begins by describing exactly the same path
+    as in <code>transform.ps</code> (a thick straight line between
+    two points, distorted by a scaling transformation).  
+    However, just after the
+    <code>10 setlinewidth</code> operation, this code calls
+    <code>strokepath</code> and then <code>1 setlinewidth</code>.
+    This means that the subsequent <code>stroke</code>, 
+    instead of drawing a thick straight line between two points,
+    draws the outline of that thick straight line.
+  </p>
+<div class="chunk" id="unnamed-chunk-7"><div class="rcode"><div class="output"><pre class="knitr r">  %!
+  0 150 translate
+  2 -1 scale 
+  newpath
+  50 50 moveto
+  100 100 lineto
+  10 setlinewidth
+  strokepath
+  1 setlinewidth
+  stroke
+  showpage
+</pre></div>
+</div></div>
+    <img src="strokepath.png">
+    <p>
+    To reproduce the original distorted straight line in R, 
+    instead of importing the original thick straight line between two points,
+    we can import the outline of that thick straight line and fill
+    in the outline.  In other words, we turn the original stroke operation
+    of a  straight line into
+    a fill operation of the outline of the straight line.
+    This works because, although R graphics cannot draw a skewed thick line,
+    it is capable of filling in an outline.
+  </p>
+    <h3>Adding strokepath to PostScriptTrace</h3>
+    <p>
+    The above shows how it is possible, by inserting a
+    <code>strokepath</code> operation,
+    to convert an original PostScript image containing a stroke that R 
+    cannot draw
+    into a PostScript image containing a fill that R can draw.
+    However, 
+    there remains the problem of how to add that <code>strokepath</code>
+    conversion to an image that we want to import into R.
+  </p>
+    <p>
+    The answer to that problem goes to the heart of how the 'grImport'
+    package works.  The first step in importing a PostScript image
+    into R is a call to the <code>PostScriptTrace</code> function,
+    which converts a PostScript file into an XML file containing
+    graphics operations that R can draw.  The 
+    <code>PostScriptTrace</code> function works by running its own
+    PostScript code to process the PostScript file that we want to
+    import.  The small R function below, <code>pscode</code>,
+    gives some idea of how that works.
+  </p>
+    <p>
+    This function just generates some
+    PostScript code, given the name of a PostScript file.  
+  </p>
+<div class="chunk" id="unnamed-chunk-8"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">pscode</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">psimage</span><span class="hl std">) {</span>
+    <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl str">&quot;/stroke {&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  strokepath&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  fill&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;} def&quot;</span><span class="hl std">,</span>
+      <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;(&quot;</span><span class="hl std">, psimage,</span> <span class="hl str">&quot;) run&quot;</span><span class="hl std">))</span>
+<span class="hl std">}</span>
+</pre></div>
+</div></div>
+    <p>
+    For example, if we are interested in the <code>simple.ps</code> 
+    PostScript image, we generate the following PostScript code.
+  </p>
+<div class="chunk" id="unnamed-chunk-9"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">cat</span><span class="hl std">(</span><span class="hl kwd">pscode</span><span class="hl std">(</span><span class="hl str">&quot;simple.ps&quot;</span><span class="hl std">),</span> <span class="hl kwc">sep</span><span class="hl std">=</span><span class="hl str">&quot;\n&quot;</span><span class="hl std">)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  /stroke {
+    strokepath
+    fill
+  } def
+  (simple.ps) run
+</pre></div>
+</div></div>
+    <p>
+    The last line of the PostScript code,
+    <code>(simple.ps) run</code>, will execute the PostScript code
+    in the file <code>simple.ps</code>.  In other words, the PostScript
+    code we have generated is designed to run the PostScript code
+    in the original image.  The code before that defines a PostScript operation
+    called <code>stroke</code>.  When the <code>stroke</code> operation
+    is encountered, this definition will be run, which will call the
+    <code>strokepath</code> operator and then the <code>fill</code> operator.
+  </p>
+    <p>
+    The definition of the <code>stroke</code> operator is significant
+    because that overrides the pre-existing <code>stroke</code> 
+    operator.  This means that, when we run the PostScript code
+    in <code>simple.ps</code>, when we hit a <code>stroke</code> operation,
+    instead of stroking a path, we will run
+    <code>strokepath</code> and <code>fill</code> instead.
+    This is how we  can inject a
+    <code>strokepath</code> operation into an existing PostScript
+    image;  by hijacking the standard PostScript <code>stroke</code> operator
+    and replacing
+    it with our own definition.
+  </p>
+    <h3>Determining when to use strokepath</h3>
+    <p>
+    In reality, we do not want to replace a stroke with
+    a fill all the time.   We only want to do this when the line has
+    been skewed by unequal scaling factors.   
+    The R function below, <code>scalecode</code>,
+    demonstrates how we can do this sort of
+    check, using the same idea as above.  We redefine the 
+    <code>stroke</code> operator to look at the current PostScript
+    transformation matrix (using the <code>currentmatrix</code>
+    operator) and calculate the amount of x-scaling and y-scaling
+    in force when the <code>stroke</code> operator is called.
+  </p>
+<div class="chunk" id="unnamed-chunk-10"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">scalecode</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">psimage</span><span class="hl std">) {</span>
+    <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl str">&quot;/str 50 string def&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;/showscale {&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  matrix currentmatrix aload pop pop pop&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  dup mul exch dup mul add sqrt 3 1 roll&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  dup mul exch dup mul add sqrt&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  (xscale=) print dup str cvs print&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  (, yscale=) print exch dup str cvs print&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;} def&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;/stroke {&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;  showscale&quot;</span><span class="hl std">,</span>
+      <span class="hl str">&quot;} def&quot;</span><span class="hl std">,</span>
+      <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;(&quot;</span><span class="hl std">, psimage,</span> <span class="hl str">&quot;) run&quot;</span><span class="hl std">))</span>
+<span class="hl std">}</span>
+</pre></div>
+</div></div>
+    <p>
+    The function below, <code>showscale</code>,
+    shows how we can run ghostscript (<a href="#mertz1997ghostscript">Mertz, 1997</a>) from R
+    to run the PostScript code that the <code>scalecode</code> function
+    generates.
+  </p>
+<div class="chunk" id="unnamed-chunk-11"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">showscale</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">psimage</span><span class="hl std">) {</span>
+    <span class="hl std">ps</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">scalecode</span><span class="hl std">(psimage)</span>
+    <span class="hl std">psfile</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">tempfile</span><span class="hl std">()</span>
+    <span class="hl kwd">writeLines</span><span class="hl std">(ps, psfile)</span>
+    <span class="hl kwd">cat</span><span class="hl std">(</span><span class="hl kwd">system</span><span class="hl std">(</span><span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;gs -dNOPAUSE -dBATCH -q &quot;</span><span class="hl std">,</span>
+                      <span class="hl str">&quot;-sDEVICE=ps2write -sOutputFile=tmp.ps &quot;</span><span class="hl std">,</span>
+                      <span class="hl std">psfile),</span> <span class="hl kwc">intern</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">),</span> <span class="hl str">&quot;\n&quot;</span><span class="hl std">)</span>
+<span class="hl std">}</span>
+</pre></div>
+</div></div>
+    <p>
+    The result of this function for the <code>simple.ps</code>
+    PostScript image (without
+    scaling) is shown below.
+  </p>
+<div class="chunk" id="unnamed-chunk-12"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">showscale</span><span class="hl std">(</span><span class="hl str">&quot;simple.ps&quot;</span><span class="hl std">)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  xscale=10.0, yscale=10.0
+</pre></div>
+</div></div>
+    <p>
+    The result for the PostScript image <code>transform.ps</code>
+    shows that the x-scaling and y-scaling are unequal.  In the
+    'grImport' function <code>PostScriptTrace</code>, this
+    case is detected and a <code>strokepath</code> plus <code>fill</code>
+    is used instead of the original <code>stroke</code>.
+  </p>
+<div class="chunk" id="unnamed-chunk-13"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">showscale</span><span class="hl std">(</span><span class="hl str">&quot;transform.ps&quot;</span><span class="hl std">)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  xscale=20.0, yscale=10.0
+</pre></div>
+</div></div>
+    <p>
+    The code below shows that the new version of 'grImport'
+    correctly renders the PostScript image <code>transform.ps</code> in R
+    (because it fills the outline of the line, rather than stroking the line).
+  </p>
+<div class="chunk" id="goodtrans"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(grImport)</span>
+<span class="hl kwd">PostScriptTrace</span><span class="hl std">(</span><span class="hl str">&quot;transform.ps&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;transform-0.9-2.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">goodTransform</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">readPicture</span><span class="hl std">(</span><span class="hl str">&quot;transform-0.9-2.xml&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">grid.picture</span><span class="hl std">(goodTransform)</span>
+</pre></div>
+</div></div>
+
+    <canvas id="goodtransform" class="pdf"></canvas>
+    <h2>
+      <a name="sources">3. Where do skewed lines come from?</a>
+    </h2>
+    <p>
+    The simple PostScript examples used so far have been extremely
+    basic, just to make the coordinate transformations clear.
+    In practice, we are unlikely to be importing a PostScript
+    image that we have generated by hand.  The reason for wanting to
+    import an external image into R is because we have used 
+    a different graphics system to generate the image.
+    The reason for using a different graphics system is 
+    because other graphics systems
+    are much better than R at generating certain sorts of images.
+    For example, PGF/TikZ (<a href="#tantau:2013">Tantau, 2013</a>) 
+    is excellent for drawing diagrams.
+  </p>
+    <p>
+    This section briefly shows an example of a simple shape generated
+    using MetaPost (<a href="#metapost">Hobby, 1998</a>).  
+    The point of this example is to show
+    a graphics system where it is straightforward to describe 
+    a line with a skewed transformation.
+  </p>
+    <p>
+    The MetaPost code below describes a loop shape, by describing 
+    a set of points and asking MetaPost to draw a curve through the
+    points.  
+  </p>
+<div class="chunk" id="unnamed-chunk-15"><div class="rcode"><div class="output"><pre class="knitr r">  prologues := 3;
+  outputtemplate := &quot;%j.ps&quot;;
+  beginfig(1);
+    z0 = (0.5cm,1.5cm); 
+    z1 = (2.5cm,2.5cm);
+    z2 = (6.5cm,0.5cm); 
+    z3 = (3.0cm,1.5cm);
+  
+    pickup pencircle xscaled 2mm yscaled 4mm rotated 30;
+    
+    draw z0..z1..z2..z3..z0..cycle;
+  endfig;
+  end
+  
+</pre></div>
+</div></div>
+    <img src="loop.png">
+    <p>
+    The most 
+    important line of code is the line starting <code>pickup pencircle</code>.
+    This line describes the "pen" that is used to draw the curve and
+    it says that the pen is taller than it is wide and that the pen
+    is rotated anticlockwise.  The shape of this pen is shown below
+    (at five times its proper size).
+  </p>
+
+    <img src="pen.png">
+    <p>
+    This ability to draw lines with a skewed pen makes it very easy
+    to draw skewed lines in a MetaPost image.
+  </p>
+    <p>
+    If we try to import this image with version 0.9-1 of 'grImport',
+    we get a poor result because R is stroking the line with
+    a fixed width (because that is the best that R can do).
+  </p>
+<div class="chunk" id="badC"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">grImportOLD</span><span class="hl opt">::</span><span class="hl kwd">PostScriptTrace</span><span class="hl std">(</span><span class="hl str">&quot;loop.ps&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;loop-0.9-1.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">badLetterC</span> <span class="hl kwb">&lt;-</span> <span class="hl std">grImportOLD</span><span class="hl opt">::</span><span class="hl kwd">readPicture</span><span class="hl std">(</span><span class="hl str">&quot;loop-0.9-1.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">grImportOLD</span><span class="hl opt">::</span><span class="hl kwd">grid.picture</span><span class="hl std">(badLetterC)</span>
+</pre></div>
+</div></div>
+
+    <canvas id="badloop" class="pdf"></canvas>
+    <p>
+    However, with the new version of 'grImport', we can import the
+    MetaPost image correctly (because we detect that the line has been
+    skewed and fill the outline of the stroke rather than trying to
+    stroke it).
+  </p>
+<div class="chunk" id="goodC"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">PostScriptTrace</span><span class="hl std">(</span><span class="hl str">&quot;loop.ps&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;loop-0.9-2.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">goodLetterC</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">readPicture</span><span class="hl std">(</span><span class="hl str">&quot;loop-0.9-2.xml&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">grid.picture</span><span class="hl std">(goodLetterC)</span>
+</pre></div>
+</div></div>
+
+    <canvas id="goodloop" class="pdf"></canvas>
+    <h2>
+      <a name="bonus">4. Importing dashed lines</a>
+    </h2>
+    <p>
+    The test within the <code>PostScriptTrace</code> function that
+    determines whether the x-scaling and y-scaling within a
+    PostScript file are the same is an example of a test for equality
+    between two floating point values.  Testing
+    for equality between floating point values is a mistake that most people
+    make at most once in their life.
+  </p>
+<div class="chunk" id="unnamed-chunk-19"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl num">0.1</span> <span class="hl opt">==</span> <span class="hl num">0.3</span> <span class="hl opt">-</span> <span class="hl num">0.2</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  [1] FALSE
+</pre></div>
+</div></div>
+    <p>
+    As a consequence, the actual test that <code>PostScriptTrace</code> 
+    performs is whether the absolute difference between the 
+    x-scaling and the y-scaling is very small.
+    The amount "very small" defaults to 0.1, but <code>PostScriptTrace</code>
+    provides a <code>scaleEPS</code> argument so that the user can
+    control what "very small" means.
+  </p>
+    <p>
+    This turns out to be useful in a slightly different problem that
+    arises when importing PostScript images into R:  dashed lines.
+  </p>
+    <p>
+    In PostScript, the <code>setdash</code> operator is used to set
+    the dash pattern for stroking a path.  The code below shows an example,
+    where the dash pattern is 3 units on then 3 units off, with an
+    offset of 1.5 (so we start half-way through the first "on").
+  </p>
+<div class="chunk" id="unnamed-chunk-20"><div class="rcode"><div class="output"><pre class="knitr r">  %!
+  newpath
+  50 50 moveto
+  100 100 lineto
+  10 setlinewidth
+  [3] 1.5 setdash 
+  stroke
+  showpage
+</pre></div>
+</div></div>
+    <img src="dash.png">
+    <p>
+    The line width in this example is set to 10, so the dashes are shorter 
+    than the line is wide and, unfortunately, this is something that
+    R graphics cannot emulate.
+    In R graphics, the <code>lty</code> graphics parameter can be specified
+    as an even number of (up to eight) on-off values, but the smallest 
+    value is 1, which corresponds to the width of the line.
+    Furthermore, R graphics has no concept of 
+    a "dash offset".
+  </p>
+    <p>
+    This means that 'grImport' does a poor job of 
+    importing the PostScript dashed line from above. 
+  </p>
+<div class="chunk" id="baddsh"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">PostScriptTrace</span><span class="hl std">(</span><span class="hl str">&quot;dash.ps&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;dash-bad.xml&quot;</span><span class="hl std">)</span>
+<span class="hl std">badDash</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">readPicture</span><span class="hl std">(</span><span class="hl str">&quot;dash-bad.xml&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">grid.picture</span><span class="hl std">(badDash)</span>
+</pre></div>
+</div></div>
+
+    <canvas id="baddash" class="pdf"></canvas>
+    <p>
+    However, because we can select our own value of <code>scaleEPS</code>,
+    and whenever the absolute difference between x-scaling and 
+    y-scaling is greater than <code>scaleEPS</code> we convert a
+    PostScript <code>stroke</code> to a <code>fill</code>,
+    if we set <code>scaleEPS</code> to be negative, <em>every</em>
+    <code>stroke</code> will be converted to a  <code>fill</code>,
+    and 'grImport' will reproduce the dashed line perfectly
+    (as shown below).
+  </p>
+<div class="chunk" id="gooddsh"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(grImport)</span>
+<span class="hl kwd">PostScriptTrace</span><span class="hl std">(</span><span class="hl str">&quot;dash.ps&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;dash-good.xml&quot;</span><span class="hl std">,</span> <span class="hl kwc">scaleEPS</span><span class="hl std">=</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">)</span>
+<span class="hl std">goodDash</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">readPicture</span><span class="hl std">(</span><span class="hl str">&quot;dash-good.xml&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">grid.picture</span><span class="hl std">(goodDash)</span>
+</pre></div>
+</div></div>
+
+    <canvas id="gooddash" class="pdf"></canvas>
+    <h2>
+      <a name="example">5. Integrating the imported image with an R plot</a>
+    </h2>
+    <p>
+    All previous examples in this report
+    have just demonstrated that it is possible
+    to replicate an external PostScript image within R.
+    This section describes a slightly more realistic scenario
+    that incoporates an imported 
+    PostScript image within an R plot.
+  </p>
+    <p>
+    The following code produces a 'lattice' (<a href="#pkg:lattice">Sarkar, 2008</a>) 
+    plot with a small
+    customisation:  there is a text label and a line (with an arrow)
+    from the label to a point in the plot.
+  </p>
+<div class="chunk" id="unnamed-chunk-23"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(lattice)</span>
+<span class="hl kwd">library</span><span class="hl std">(grid)</span>
+<span class="hl std">rx4</span> <span class="hl kwb">&lt;-</span> <span class="hl std">mtcars[</span><span class="hl num">1</span><span class="hl std">, ]</span>
+<span class="hl kwd">xyplot</span><span class="hl std">(mpg</span> <span class="hl opt">~</span> <span class="hl std">disp, mtcars,</span> <span class="hl kwc">pch</span><span class="hl std">=</span><span class="hl num">16</span><span class="hl std">,</span>
+       <span class="hl kwc">panel</span><span class="hl std">=</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">...</span><span class="hl std">) {</span>
+           <span class="hl kwd">grid.text</span><span class="hl std">(</span><span class="hl kwd">rownames</span><span class="hl std">(rx4),</span> <span class="hl num">400</span><span class="hl std">,</span> <span class="hl num">27</span><span class="hl std">,</span> <span class="hl kwc">just</span><span class="hl std">=</span><span class="hl str">&quot;left&quot;</span><span class="hl std">,</span>
+                     <span class="hl kwc">default.units</span><span class="hl std">=</span><span class="hl str">&quot;native&quot;</span><span class="hl std">)</span>
+           <span class="hl kwd">grid.segments</span><span class="hl std">(</span><span class="hl num">400</span><span class="hl std">,</span> <span class="hl num">27</span><span class="hl std">, rx4</span><span class="hl opt">$</span><span class="hl std">disp, rx4</span><span class="hl opt">$</span><span class="hl std">mpg,</span>
+                         <span class="hl kwc">default.units</span><span class="hl std">=</span><span class="hl str">&quot;native&quot;</span><span class="hl std">,</span>
+                         <span class="hl kwc">arrow</span><span class="hl std">=</span><span class="hl kwd">arrow</span><span class="hl std">())</span>
+           <span class="hl kwd">panel.xyplot</span><span class="hl std">(...)</span>
+       <span class="hl std">})</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-23-1.png" title="plot of chunk unnamed-chunk-23" alt="plot of chunk unnamed-chunk-23" class="plot" /></div></div>
+    <p>
+    The MetaPost system, with its 'mparrows' module, has a much wider
+    range of line styles and arrowheads than R (even taking into 
+    account packages like 'shape' (<a href="#pkg:shape">Soetaert, 2018</a>) 
+    and 'DiagrammeR' (<a href="#pkg:diagrammer">Iannone, 2018</a>)).
+    Rather than attempt to rewrite facilities similar to MetaPost's 
+    within R, we can just make use of MetaPost to draw a line
+    and then import it into R.
+  </p>
+    <p>
+    The following code defines a function that generates, imports,
+    and draws a MetaPost line between two points.
+    It first generates MetaPost code to draw a line, based on a
+    start and end point and start and end angles.
+    This code also draws a rectangle of a specified width and height.
+    The MetaPost code is run to produce a PostScript file and the
+    PostScript file is imported into R.  Within R, the rectangle
+    is removed (that was just to scale the image correctly) and 
+    then the remaining line (plus arrow) is drawn.
+  </p>
+    <!-- NOTE that the double-dash syntax for straight lines between
+       points in MetaPost cannot be used within XML comments, so
+       the code in the function below splits each double-dash
+       into two individual dashes and paste0()s them together -->
+<div class="chunk" id="unnamed-chunk-24"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">mpLine</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x1</span><span class="hl std">,</span> <span class="hl kwc">y1</span><span class="hl std">,</span> <span class="hl kwc">x2</span><span class="hl std">,</span> <span class="hl kwc">y2</span><span class="hl std">,</span> <span class="hl kwc">angle</span><span class="hl std">,</span> <span class="hl kwc">w</span><span class="hl std">,</span> <span class="hl kwc">h</span><span class="hl std">) {</span>
+    <span class="hl std">mpcode</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl str">&quot;prologues := 3;&quot;</span><span class="hl std">,</span>
+                <span class="hl str">'outputtemplate := &quot;%j.ps&quot;;'</span><span class="hl std">,</span>
+                <span class="hl str">&quot;input mparrows;&quot;</span><span class="hl std">,</span>
+                <span class="hl str">&quot;setarrows(barbed);&quot;</span><span class="hl std">,</span>
+                <span class="hl str">&quot;barbedarrowindent := .6;&quot;</span><span class="hl std">,</span>
+                <span class="hl str">&quot;ahlength := 8mm;&quot;</span><span class="hl std">,</span>
+                <span class="hl str">&quot;beginfig(1);&quot;</span><span class="hl std">,</span>
+                <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;draw (0,0)-&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;-(&quot;</span><span class="hl std">,</span>
+                       <span class="hl std">w,</span> <span class="hl str">&quot;cm,0)-&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;-(&quot;</span><span class="hl std">,</span>
+                       <span class="hl std">w,</span> <span class="hl str">&quot;cm,&quot;</span><span class="hl std">, h,</span> <span class="hl str">&quot;cm)-&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;-(&quot;</span><span class="hl std">,</span>
+                       <span class="hl str">&quot;0,&quot;</span><span class="hl std">, h,</span> <span class="hl str">&quot;cm)-&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;-cycle;&quot;</span><span class="hl std">),</span>
+                <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;z0 = (&quot;</span><span class="hl std">, x1,</span> <span class="hl str">&quot;cm,&quot;</span><span class="hl std">, y1,</span> <span class="hl str">&quot;cm);&quot;</span><span class="hl std">),</span>
+                <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;z1 = (&quot;</span><span class="hl std">, x2,</span> <span class="hl str">&quot;cm,&quot;</span><span class="hl std">, y2,</span> <span class="hl str">&quot;cm);&quot;</span><span class="hl std">),</span>
+                <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;drawarrow z0{dir &quot;</span><span class="hl std">, angle,</span> <span class="hl str">&quot;}..z1{dir &quot;</span><span class="hl std">, angle,</span> <span class="hl str">&quot;};&quot;</span><span class="hl std">),</span>
+                <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;pickup pencircle xscaled 5pt yscaled .5pt rotated &quot;</span><span class="hl std">,</span>
+                       <span class="hl std">angle,</span> <span class="hl str">&quot;;&quot;</span><span class="hl std">),</span>
+                <span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;draw z0{dir &quot;</span><span class="hl std">, angle,</span> <span class="hl str">&quot;}..z1{dir &quot;</span><span class="hl std">, angle,</span> <span class="hl str">&quot;};&quot;</span><span class="hl std">),</span>
+                <span class="hl str">&quot;endfig;&quot;</span><span class="hl std">,</span>
+                <span class="hl str">&quot;end&quot;</span><span class="hl std">)</span>
+    <span class="hl std">mpfile</span> <span class="hl kwb">&lt;-</span> <span class="hl str">&quot;line.mp&quot;</span>
+    <span class="hl std">psfile</span> <span class="hl kwb">&lt;-</span> <span class="hl str">&quot;line.ps&quot;</span>
+    <span class="hl std">xmlfile</span> <span class="hl kwb">&lt;-</span> <span class="hl str">&quot;line.xml&quot;</span>
+    <span class="hl kwd">writeLines</span><span class="hl std">(mpcode, mpfile)</span>
+    <span class="hl kwd">system</span><span class="hl std">(</span><span class="hl kwd">paste0</span><span class="hl std">(</span><span class="hl str">&quot;mpost &quot;</span><span class="hl std">, mpfile))</span>
+    <span class="hl kwd">PostScriptTrace</span><span class="hl std">(psfile, xmlfile)</span>
+    <span class="hl std">pic</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">readPicture</span><span class="hl std">(xmlfile)</span>
+    <span class="hl std">line</span> <span class="hl kwb">&lt;-</span> <span class="hl std">pic[</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">]</span>
+    <span class="hl std">line</span><span class="hl opt">@</span><span class="hl kwc">summary</span><span class="hl opt">@</span><span class="hl kwc">xscale</span> <span class="hl kwb">&lt;-</span> <span class="hl std">pic</span><span class="hl opt">@</span><span class="hl kwc">summary</span><span class="hl opt">@</span><span class="hl kwc">xscale</span>
+    <span class="hl std">line</span><span class="hl opt">@</span><span class="hl kwc">summary</span><span class="hl opt">@</span><span class="hl kwc">yscale</span> <span class="hl kwb">&lt;-</span> <span class="hl std">pic</span><span class="hl opt">@</span><span class="hl kwc">summary</span><span class="hl opt">@</span><span class="hl kwc">yscale</span>
+    <span class="hl kwd">grid.picture</span><span class="hl std">(line,</span> <span class="hl kwc">exp</span><span class="hl std">=</span><span class="hl num">0</span><span class="hl std">)</span>
+<span class="hl std">}</span>
+</pre></div>
+</div></div>
+    <p>
+    The image below shows an example of the MetaPost 
+    image that this function creates (complete with its border
+    rectangle).
+  </p>
+
+    <img src="line.png">
+    <p>
+    The next code makes use of that function to add a MetaPost line
+    to the 'lattice' plot.  Some calculations are required to 
+    express the line start point and end point, and the overall 
+    size of the MetaPost image, in terms of centimetres
+    (all within the 'grid' viewport that corresponds to the
+    'lattice' plot panel). 
+  </p>
+<div class="chunk" id="unnamed-chunk-26"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">xyplot</span><span class="hl std">(mpg</span> <span class="hl opt">~</span> <span class="hl std">disp, mtcars,</span>
+       <span class="hl kwc">panel</span><span class="hl std">=</span><span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">...</span><span class="hl std">) {</span>
+           <span class="hl kwd">panel.xyplot</span><span class="hl std">(...)</span>
+           <span class="hl std">textLeft</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">400</span><span class="hl std">,</span> <span class="hl str">&quot;native&quot;</span><span class="hl std">)</span>
+           <span class="hl std">textY</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">27</span><span class="hl std">,</span> <span class="hl str">&quot;native&quot;</span><span class="hl std">)</span>
+           <span class="hl kwd">grid.text</span><span class="hl std">(</span><span class="hl kwd">rownames</span><span class="hl std">(rx4), textLeft, textY,</span> <span class="hl kwc">just</span><span class="hl std">=</span><span class="hl str">&quot;left&quot;</span><span class="hl std">)</span>
+           <span class="hl std">textLeftCM</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">convertX</span><span class="hl std">(textLeft</span> <span class="hl opt">-</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl str">&quot;cm&quot;</span><span class="hl std">,</span>
+                                  <span class="hl kwc">valueOnly</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+           <span class="hl std">textYCM</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">convertY</span><span class="hl std">(textY,</span> <span class="hl str">&quot;cm&quot;</span><span class="hl std">,</span> <span class="hl kwc">valueOnly</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+           <span class="hl std">pointRightCM</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">convertX</span><span class="hl std">(</span><span class="hl kwd">unit</span><span class="hl std">(mtcars</span><span class="hl opt">$</span><span class="hl std">disp[</span><span class="hl num">1</span><span class="hl std">],</span> <span class="hl str">&quot;native&quot;</span><span class="hl std">)</span> <span class="hl opt">+</span>
+                                    <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">2</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl str">&quot;cm&quot;</span><span class="hl std">,</span>
+                                    <span class="hl kwc">valueOnly</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+           <span class="hl std">pointYCM</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">convertY</span><span class="hl std">(</span><span class="hl kwd">unit</span><span class="hl std">(mtcars</span><span class="hl opt">$</span><span class="hl std">mpg[</span><span class="hl num">1</span><span class="hl std">],</span> <span class="hl str">&quot;native&quot;</span><span class="hl std">)</span> <span class="hl opt">-</span>
+                                <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">2</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl str">&quot;cm&quot;</span><span class="hl std">,</span>
+                                <span class="hl kwc">valueOnly</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+           <span class="hl std">panelWidthCM</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">convertWidth</span><span class="hl std">(</span><span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl str">&quot;npc&quot;</span><span class="hl std">),</span> <span class="hl str">&quot;cm&quot;</span><span class="hl std">,</span>
+                                        <span class="hl kwc">valueOnly</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+           <span class="hl std">panelHeightCM</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">convertHeight</span><span class="hl std">(</span><span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl str">&quot;npc&quot;</span><span class="hl std">),</span> <span class="hl str">&quot;cm&quot;</span><span class="hl std">,</span>
+                                          <span class="hl kwc">valueOnly</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+           <span class="hl kwd">mpLine</span><span class="hl std">(textLeftCM, textYCM, pointRightCM, pointYCM,</span>
+                  <span class="hl num">135</span><span class="hl std">, panelWidthCM, panelHeightCM)</span>
+       <span class="hl std">})</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-26-1.svg" title="plot of chunk unnamed-chunk-26" alt="plot of chunk unnamed-chunk-26" class="plot" /></div></div>
+    <h2>
+      <a name="discussion">6. Discussion</a>
+    </h2>
+    <h3>Why not convert everything to a path?</h3>
+    <p>
+    The 'grImport' package successfully imports skewed lines by
+    converting them to filled paths, but this conversion is only
+    performed where necessary.  An alternative would be to convert
+    all shapes into paths (similar to what happens in SVG output
+    with Cairo graphics; <a href="#cairo">Packard et al., 2018</a>), but that is not done 
+    in 'grImport' because
+    rendering of paths is not as good as rendering of the original
+    shapes in some cases.  For example, rendering a very thin line
+    as a path can lead to either a too heavy line or no line at all
+    because on some graphics devices at least, a line will be 
+    anti-aliased, but a path will not.  The code
+    below draws a series of 
+    thin, horizontal filled rectangles (on the left) and a series of 
+    line segments (on the right), with the "width" of the result slowly
+    decreasing.  The "widths" of the filled rectangles decrease in quantum
+    steps (and the final one disappears), while the 
+    line segments decrease more smoothly due to antialiasing.
+  </p>
+<div class="chunk" id="unnamed-chunk-27"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.rect</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">width</span><span class="hl std">=</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl kwc">y</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl opt">/</span><span class="hl num">6</span><span class="hl std">,</span> <span class="hl kwc">height</span><span class="hl std">=</span><span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;pt&quot;</span><span class="hl std">),</span>
+          <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;black&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.segments</span><span class="hl std">(</span><span class="hl num">.6</span><span class="hl std">,</span> <span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl opt">/</span><span class="hl num">6</span><span class="hl std">,</span> <span class="hl num">.9</span><span class="hl std">,</span> <span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl opt">/</span><span class="hl num">6</span><span class="hl std">,</span>
+              <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl kwc">lineend</span><span class="hl std">=</span><span class="hl str">&quot;butt&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-27-1.png" title="plot of chunk unnamed-chunk-27" alt="plot of chunk unnamed-chunk-27" class="plot" /></div></div>
+    <p>
+    Similarly, text that is
+    rendered as filled paths rather than using proper font rendering
+    can produce a worse result because font
+    rendering uses techniques such as "hinting" to produce a good result
+    and filling a path does not use these techniques.  
+  </p>
+    <p>
+    On the other hand, importing text is tricky because it is not 
+    necessarily easy or possible 
+    to find the font that was used to draw the original
+    image.  The reason
+    the upside-down text was imported correctly right back at the 
+    beginning of this report is because, by default, 'grImport'
+    converts text in a PostScript image to a filled path. 
+  </p>
+    <h3>Importing images versus including images</h3>
+    <p>
+    Being able to <em>import</em> images into R is different from being
+    able to <em>include</em>
+    an image.  Importing an image means converting it into the
+    language and data structures of the parent system.
+    By contrast, including an image means keeping the image
+    as a single opaque object (e.g., including a PostScript image
+    within a LaTeX document).  
+    Importing an image is useful because it exposes the image to the
+    facilities of the container language.  For example, having imported
+    an image into R, we
+    can use R subsetting to extract just some portion of the original image
+    as we did to remove the rectangle border from a MetaPost image 
+    in the Section <a href="#example">Integrating the imported image with an R plot</a>).
+  </p>
+    <h3>Loss of information</h3>
+    <p>
+    When we are importing an image between
+    higher-level languages, like MetaPost or R, going through
+    a lower-level intermediary, like PostScript, means that we lose
+    some of the information about the original image when we
+    attempt to move between higher-level languages.  
+  </p>
+    <p>
+    This report has described one situation where the higher-level 
+    system (R in this case) loses information when importing the lower-level
+    intermediary (PostScript); 
+    a skewed stroke in MetaPost, which remains a skewed stroke in PostScript,
+    becomes a filled path in R.
+  </p>
+    <p>
+    Loss of information can also occur in the transition from
+    higher-level language to lower-level intermediary.
+    For example,
+    it is possible to describe a line that
+    is drawn with a pen that varies along the length of the line
+    (essentially producing a variable-width line).  This cannot be
+    converted directly to a line stroke in PostScript, 
+    so the PostScript that is generated
+    from MetaPost produces a filled path, rather than a line.
+    <!-- https://tex.stackexchange.com/questions/341495/change-rotation-of-metapost-pens-dynamically-while-drawing -->
+    The MetaPost code below draws a curve between three
+    points, with a different pen width and angle specified at each point, but
+    this produces PostScript that is a filled path rather than a stroked line
+    (as can be seen in the final line of the PostScript code that
+    is shown below the image).
+  </p>
+<div class="chunk" id="unnamed-chunk-28"><div class="rcode"><div class="output"><pre class="knitr r">  prologues := 3;
+  outputtemplate := &quot;%j.ps&quot;;
+  beginfig(1);
+  z1 = (0, 0);
+  z2 = (50, 50);
+  z3 = (100, 0);
+  penpos1(5, 0);
+  penpos2(10, 90);
+  penpos3(20, 0);
+  penstroke z1e..z2e..z3e;
+  endfig;
+  end
+</pre></div>
+</div></div>
+    <img src="vwline.png">
+<div class="chunk" id="unnamed-chunk-29"><div class="rcode"><div class="output"><pre class="knitr r">  %!PS-Adobe-3.0 EPSF-3.0
+  %%BoundingBox: -3 0 111 56 
+  %%HiResBoundingBox: -2.5 0 110.00775 55.29723 
+  %%Creator: MetaPost 1.999
+  %%CreationDate: 2018.09.17:2155
+  %%Pages: 1
+  %%DocumentResources: procset mpost-minimal
+  %%DocumentSuppliedResources: procset mpost-minimal
+  %%EndComments
+  %%BeginProlog
+  %%BeginResource: procset mpost-minimal
+  /bd{bind def}bind def/fshow {exch findfont exch scalefont setfont show}bd
+  /fcp{findfont dup length dict begin{1 index/FID ne{def}{pop pop}ifelse}forall}bd
+  /fmc{FontMatrix dup length array copy dup dup}bd/fmd{/FontMatrix exch def}bd
+  /Amul{4 -1 roll exch mul 1000 div}bd/ExtendFont{fmc 0 get Amul 0 exch put fmd}bd
+  /ScaleFont{dup fmc 0 get Amul 0 exch put dup dup 3 get Amul 3 exch put fmd}bd
+  /SlantFont{fmc 2 get dup 0 eq{pop 1}if Amul FontMatrix 0 get mul 2 exch put fmd}bd
+  %%EndResource
+  %%EndProlog
+  %%BeginSetup
+  %%EndSetup
+  %%Page: 1 1
+   0 0 0 setrgbcolor
+  newpath -2.5 0 moveto
+  -1.61581 27.50935 22.67906 48.33354 50 45 curveto
+  72.76758 42.22205 89.9105 22.93625 90 0 curveto
+  110 0 lineto
+  110.54294 32.6178 82.44759 58.37186 50 55 curveto
+  22.11862 52.10265 1.30803 28.00616 2.5 0 curveto
+   closepath fill
+  showpage
+  %%EOF
+</pre></div>
+</div></div>
+    <p>
+    This is also how the 'vwline' package (<a href="#vwline-pkg">Murrell, 2017</a>) for
+    drawing variable-width lines
+    in R works; it
+    generates paths to fill rather than lines to stroke.
+  </p>
+    <!--
+  <p>
+    This loss of information means that the original MetaPost line
+    description ends up as a filled path when the line is imported
+    into R and this can limit the actions that are possible with the
+    imported image.  For example, the following MetaPost image 
+    contains two lines (in terms of MetaPost concepts),
+    but when it is exported to PostScript, 
+    one of the MetaPost lines becomes a filled path in PostScript.
+  </p>
+  <rcode echo="FALSE"><![CDATA[
+system("mpost linesandpaths.mp")
+system("convert -density 100 linesandpaths.ps linesandpaths.png")
+cat(readLines("linesandpaths.mp"), sep="\n")
+  ]]></rcode>
+  <img src="linesandpaths.png"/>
+  <p>
+    If we import this image into R and change all "line" grobs to
+    red, only one of the lines changes (because only one MetaPost
+    line is a PostScript stroke; the other MetaPost line is a 
+    PostScript path).
+  </p>
+  <rcode fig.width="2" fig.height="2"><![CDATA[
+PostScriptTrace("linesandpaths.ps", "linesandpaths.xml")
+x <- readPicture("linesandpaths.xml")
+grid.picture(x, exp=.2)
+grid.force()
+grid.edit("line", grep=TRUE, global=TRUE, gp=gpar(col="red"))
+  ]]></rcode>
+  -->
+    <p>
+    Where possible, it is therefore better to be able to convert more directly 
+    between higher-level languages.  This is what, for example,
+    the 'tikzDevice' (<a href="#pkg:tikz">Sharpsteen and Bracken, 2018</a>) 
+    does by converting R graphics output into PGF/TikZ graphics.
+    Another example, is the 
+    conversion that the 'gridGraphics' package (<a href="#pkg:gridgraphics">Murrell and Wen, 2018</a>)
+    performs between the 'graphics' system and the 'grid' system
+    (entirely within R).
+  </p>
+    <h3>The special nature of PostScript</h3>
+    <p>
+    Importing PostScript is a special case because the PostScript
+    language is Turing-complete, which means that we can 
+    write complex programs in PostScript.  The 'grImport' package
+    takes advantage of this by writing its own PostScript
+    code to  process PostScript images.
+  </p>
+    <p>
+    Although a more modern graphics language like SVG has more 
+    advanced graphics features than PostScript (e.g., filters,
+    semi-transparency, and animation), there is no facility in the
+    SVG language itself that can assist with, for example,
+    converting an SVG line into an SVG path.
+  </p>
+    <p>
+    This means that, although the 'grImport2' package 
+    (<a href="#pkg:grimport2">Potter, 2018</a>), which can import
+    (a subset of) SVG images into R, is useful for importing images
+    that have features that cannot appear in a PostScript image,
+    we cannot import SVG images that contain skewed lines using
+    'grImport2' because the transformation from stroked line
+    to filled path that 'grImport' can achieve with PostScript images
+    is not available to 'grImport2'.
+  </p>
+    <h3>Having your cake and eating it</h3>
+    <p>
+    The original problem with importing skewed lines into R 
+    is based on the fact that R graphics, for good reasons,
+    does not allow coordinate transformations to impact on
+    text and line styles.  Although this restriction within R
+    graphics is justified, it is not absolutely necessary.
+    The PGF/TikZ graphics system has identified the same problem,
+    but has a more sophisticated solution, maintaining more than
+    one set of coordinate transformations.  In PGF/TikZ, there
+    is a "canvas" transformation that acts like PostScript,
+    affecting all graphics (including skewed lines if scaling
+    transformations are unequal), and a "coordinate" transformation
+    that only affects locations, like in R graphics.  Managing the
+    two transformations coherently requires care, but this does
+    allow a greater expressiveness in PGF/TikZ graphics.
+  </p>
+    <p>
+    Another example of a sophisticated solution to this problem
+    is the SVG 2 Candidate Recommendation (<a href="#Schulze:18:SVG">Schulze et al., 2018</a>),
+    which includes a 'vector-effect' attribute.  This allows
+    different parts of the SVG transformation matrix to be ignored.
+    <!-- https://www.w3.org/TR/2018/CR-SVG2-20180807/coords.html#VectorEffects -->
+    For example, it is possible to specify that part of an SVG image will
+    ignore the current rotation and/or scaling within an image.
+  </p>
+    <h2>
+      <a name="summary">7. Summary</a>
+    </h2>
+    <p>
+    R graphics, unlike general-purpose graphics languages like PostScript,
+    only applies coordinate system transformations selectively.
+    This makes it difficult to import some PostScript images.
+    Version 0.9-2 of the 'grImport' package at least partially solves
+    this problem by converting lines to filled paths when the coordinate
+    transformation involves unequal scaling in the x- and y-dimensions.
+    As a bonus, this also provides a way to
+    successfully import PostScript images that contain stroked paths
+    with a fancy dash pattern.  One example application of this new
+    facility is the import into R of images that were produced by the 
+    MetaPost language.
+  </p>
+    <p>
+  </p>
+    <h2>
+      <a name="requirements">8. Technical requirements</a>
+    </h2>
+    <p>
+    The examples and discussion in this document relate to <a href="grImport_0.9-2.tar.gz">version
+    0.9-2</a> of the 'grImport' package.
+  </p>
+    <p>
+    This report was generated within a Docker container
+    (see <a href="#Resources">Resources</a> section below).
+  </p>
+    <h2>
+      <a name="Resources">9. Resources</a>
+    </h2>
+    <ul>
+      <li>
+      The <a href="skew.cml">raw source file</a> for this
+      report, a <a href="skew.xml">valid XML</a>
+      transformation of the source file, a <a href="skew.Rhtml">'knitr' document</a> generated from
+      the XML file, 
+      two <a href="toc.R">R</a> <a href="bib.R">files</a> and
+      the <a href="skew.bib">bibtex file</a>
+      that are used to generate the table of contents and reference sections,
+      two <a href="common.xsl">XSL</a> <a href="knitr.xsl">files</a> and an 
+      <a href="knit.R">R file</a> that are used to transform the XML to
+      the 'knitr' document, and a <a href="Makefile">Makefile</a> that
+      contains code for the other transformations and coordinates
+      everything.  
+      These materials are also available
+      on <a href="https://github.com/pmur002/skew-report/releases/tag/v1">github</a>.
+    </li>
+      <li>
+<a href="grImportOLD_0.9-1t.tar.gz">Version 0.9-1</a>
+      of 'grImport' packaged as 'grImportOLD'.
+    </li>
+      <li>
+      This report was generated within a 
+      <a href="https://www.docker.com/">Docker</a> container.
+      The Docker command to build the report is included in the Makefile above.
+      The Docker image for the container is available from
+      <a href="https://hub.docker.com/r/pmur002/skew/">Docker Hub</a>;
+      alternatively, the image can be rebuilt from its 
+      <a href="Dockerfile">Dockerfile</a>.
+    </li>
+    </ul>
+    <h2>How to cite this document</h2>
+    <p>
+    Murrell, P. (2018). "Importing General-Purpose Graphics in R" 
+    Technical Report 2018-??, Department of Statistics, The University of Auckland. 
+    [ <a href="how-to-cite.bib">bib</a> ] 
+  </p>
+    <h2>
+      <a name="references">10. References</a>
+    </h2>
+    <dl>
+<dt>
+[<a name="AdobeSystemsInc.:1999:PLR:297697">Adobe Systems Inc., 1999</a>]
+</dt>
+<dd>
+Adobe Systems Inc., C. (1999).
+ <em>PostScript Language Reference (3rd Ed.)</em>.
+ Addison-Wesley Longman Publishing Co., Inc., Boston, MA, USA.
+[ <a href="skew-bib_bib.html#AdobeSystemsInc.:1999:PLR:297697">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="Ferraiolo01scalablevector">Ferraiolo and ed., 2001</a>]
+</dt>
+<dd>
+Ferraiolo, J. and ed. (2001).
+ Scalable Vector Graphics (SVG) 1.0 specification.
+[ <a href="skew-bib_bib.html#Ferraiolo01scalablevector">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="metapost">Hobby, 1998</a>]
+</dt>
+<dd>
+Hobby, J. (1998).
+ <em>A User's Manual for MetaPost</em>.
+[ <a href="skew-bib_bib.html#metapost">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="mplib">Hoekwater and Hagen, 2007</a>]
+</dt>
+<dd>
+Hoekwater, T. and Hagen, H. (2007).
+ Mplib: MetaPost as a reusable component.
+ <em>TUGboat</em>, 28(3).
+[ <a href="skew-bib_bib.html#mplib">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:diagrammer">Iannone, 2018</a>]
+</dt>
+<dd>
+Iannone, R. (2018).
+ <em>DiagrammeR: Graph/Network Visualization</em>.
+ R package version 1.0.0.
+[ <a href="skew-bib_bib.html#pkg:diagrammer">bib</a> | 
+<a href="https://CRAN.R-project.org/package=DiagrammeR">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="mertz1997ghostscript">Mertz, 1997</a>]
+</dt>
+<dd>
+Mertz, T. (1997).
+ <em>Ghostscript User Manual</em>.
+ Springer-Verlag.
+[ <a href="skew-bib_bib.html#mertz1997ghostscript">bib</a> | 
+<a href="https://books.google.co.nz/books?id=on61HAAACAAJ">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="vwline-pkg">Murrell, 2017</a>]
+</dt>
+<dd>
+Murrell, P. (2017).
+ <em>vwline: Draw variable-width lines</em>.
+ R package version 0.1.
+[ <a href="skew-bib_bib.html#vwline-pkg">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:gridgraphics">Murrell and Wen, 2018</a>]
+</dt>
+<dd>
+Murrell, P. and Wen, Z. (2018).
+ <em>gridGraphics: Redraw Base Graphics Using 'grid' Graphics</em>.
+ R package version 0.3-0.
+[ <a href="skew-bib_bib.html#pkg:gridgraphics">bib</a> | 
+<a href="https://CRAN.R-project.org/package=gridGraphics">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="cairo">Packard et al., 2018</a>]
+</dt>
+<dd>
+Packard, K., Worth, C., and Esfahbod, B. (2018).
+ Cairo graphics library.
+ <a href="https://www.cairographics.org/">https://www.cairographics.org/</a>.
+ Accessed: 2018-08-30.
+[ <a href="skew-bib_bib.html#cairo">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:grimport2">Potter, 2018</a>]
+</dt>
+<dd>
+Potter, S. (2018).
+ <em>grImport2: Importing 'SVG' Graphics</em>.
+ R package version 0.1-5.
+[ <a href="skew-bib_bib.html#pkg:grimport2">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="R">R Core Team, 2018</a>]
+</dt>
+<dd>
+R Core Team (2018).
+ <em>R: A Language and Environment for Statistical Computing</em>.
+ R Foundation for Statistical Computing, Vienna, Austria.
+[ <a href="skew-bib_bib.html#R">bib</a> | 
+<a href="https://www.R-project.org/">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:lattice">Sarkar, 2008</a>]
+</dt>
+<dd>
+Sarkar, D. (2008).
+ <em>Lattice: Multivariate Data Visualization with R</em>.
+ Springer, New York.
+ ISBN 978-0-387-75968-5.
+[ <a href="skew-bib_bib.html#pkg:lattice">bib</a> | 
+<a href="http://lmdvr.r-forge.r-project.org">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="Schulze:18:SVG">Schulze et al., 2018</a>]
+</dt>
+<dd>
+Schulze, D., Bellamy-Royds, A., Lilley, C., Storey, D., Brinza, B., and
+  Willigers, E. (2018).
+ Scalable Vector Graphics (SVG) 2.
+ Candidate recommendation, W3C.
+ https://www.w3.org/TR/2018/CR-SVG2-20180807/.
+[ <a href="skew-bib_bib.html#Schulze:18:SVG">bib</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:tikz">Sharpsteen and Bracken, 2018</a>]
+</dt>
+<dd>
+Sharpsteen, C. and Bracken, C. (2018).
+ <em>tikzDevice: R Graphics Output in LaTeX Format</em>.
+ R package version 0.12.
+[ <a href="skew-bib_bib.html#pkg:tikz">bib</a> | 
+<a href="https://CRAN.R-project.org/package=tikzDevice">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="pkg:shape">Soetaert, 2018</a>]
+</dt>
+<dd>
+Soetaert, K. (2018).
+ <em>shape: Functions for Plotting Graphical Shapes, Colors</em>.
+ R package version 1.4.4.
+[ <a href="skew-bib_bib.html#pkg:shape">bib</a> | 
+<a href="https://CRAN.R-project.org/package=shape">http</a> ]
+
+</dd>
+
+
+<dt>
+[<a name="tantau:2013">Tantau, 2013</a>]
+</dt>
+<dd>
+Tantau, T. (2013).
+ <em>The TikZ and PGF Packages</em>.
+[ <a href="skew-bib_bib.html#tantau:2013">bib</a> | 
+<a href="http://sourceforge.net/projects/pgf/">http</a> ]
+
+</dd>
+</dl>
+    <hr>
+    <p><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img class="CC" alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Paul
+    Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+    <script>
+  // Use async/await so that PDF files loaded one at a time
+  async function loadPDFs() {
+    var pdfcanvas = document.querySelectorAll("canvas.pdf");
+    var i;
+    for (i=0; i < pdfcanvas.length; i++) {
+        var canvas = pdfcanvas[i];
+        var canvasid = canvas.id;
+        var pdf = await pdfjsLib.getDocument(canvasid + '.pdf');
+        var page = await pdf.getPage(1);
+        var scale = canvas.getAttribute("scale");
+        if (!scale) {
+            scale = 100/72;
+        }
+        var viewport = page.getViewport(scale);
+        var context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        var renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
+        page.render(renderContext);
+    }
+  }
+  loadPDFs();
+  </script>
+  </body>
+</html>
