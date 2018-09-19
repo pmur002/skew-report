@@ -3,7 +3,7 @@ outputtemplate := "%j.ps";
 input mparrows;
 setarrows(barbed);
 barbedarrowindent := .6;
-ahlength := 8mm;
+ahlength := 5mm;
 beginfig(1);
 draw (0,0)--(15.0370911111111cm,0)--(15.0370911111111cm,14.7527522222222cm)--(0,14.7527522222222cm)--cycle;
 z0 = (11.6448135429835cm,10.0471804514537cm);
