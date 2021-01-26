@@ -104,8 +104,12 @@
       </span>
     </p>
     <p class="date">
-    Version 1:
-Wednesday 19 September 2018
+    Version 2:
+Tuesday 26 January 2021
+  </p>
+    <p class="date versionHistory">
+    Version 1:  Wednesday 19 September 2018; original publication<br>
+    Version 2:  update pdf.js code (for displaying PDFs)
   </p>
 
 
@@ -875,7 +879,7 @@ Wednesday 19 September 2018
   %%BoundingBox: -3 0 111 56 
   %%HiResBoundingBox: -2.5 0 110.00775 55.29723 
   %%Creator: MetaPost 1.999
-  %%CreationDate: 2018.09.19:2112
+  %%CreationDate: 2021.01.26:2337
   %%Pages: 1
   %%DocumentResources: procset mpost-minimal
   %%DocumentSuppliedResources: procset mpost-minimal
@@ -1050,7 +1054,7 @@ grid.edit("line", grep=TRUE, global=TRUE, gp=gpar(col="red"))
       contains code for the other transformations and coordinates
       everything.  
       These materials are also available
-      on <a href="https://github.com/pmur002/skew-report/releases/tag/v1">github</a>.
+      on <a href="https://github.com/pmur002/skew-report/releases/tag/v2">github</a>.
     </li>
       <li>
 <a href="grImportOLD_0.9-1t.tar.gz">Version 0.9-1</a>
@@ -1283,28 +1287,41 @@ Tantau, T. (2013).
     Commons Attribution 4.0 International License</a>.
   </p>
     <script>
-  // Use async/await so that PDF files loaded one at a time
-  async function loadPDFs() {
-    var pdfcanvas = document.querySelectorAll("canvas.pdf");
-    var i;
-    for (i=0; i < pdfcanvas.length; i++) {
-        var canvas = pdfcanvas[i];
-        var canvasid = canvas.id;
-        var pdf = await pdfjsLib.getDocument(canvasid + '.pdf');
-        var page = await pdf.getPage(1);
-        var scale = canvas.getAttribute("scale");
-        if (!scale) {
-            scale = 100/72;
-        }
-        var viewport = page.getViewport(scale);
-        var context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        var renderContext = {
-            canvasContext: context,
-            viewport: viewport
-        };
-        page.render(renderContext);
+  var pdfcanvas = document.querySelectorAll("canvas.pdf");
+
+  function renderPDF(i) {
+    var canvas = pdfcanvas[i];
+    var canvasid = canvas.id;
+    console.log("loop " + canvasid);
+    var loadingTask = pdfjsLib.getDocument(canvasid + '.pdf');
+    loadingTask.promise.then(function(pdf) {
+        pdf.getPage(1).then(function(page) {
+            console.log("pdf" + canvasid);
+            var scale = canvas.getAttribute("scale");
+            if (!scale) {
+                scale = 100/72;
+            }
+            var viewport = page.getViewport({ scale: scale, });
+            var context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            var renderContext = {
+                  canvasContext: context,
+                  viewport: viewport
+              };
+            var renderTask = page.render(renderContext);
+            renderTask.promise.then(function() {
+                if (i + 1 < pdfcanvas.length) {
+                    renderPDF(i + 1)
+                }
+            });   
+         });
+    });
+  }
+
+  function loadPDFs() {
+    if (pdfcanvas.length > 0) {
+        renderPDF(0);
     }
   }
   loadPDFs();
